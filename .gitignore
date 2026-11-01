@@ -1,0 +1,26 @@
+# ESP-IDF
+build/
+sdkconfig
+sdkconfig.old
+managed_components/
+components/
+dependencies.lock.bak
+
+# generated
+fonts/fonts.bin
+dist/
+test/host/test_*
+!test/host/test_*.cpp
+test/host/*.o
+test/host/epubs/
+
+# editors / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+__pycache__/
+
+# local logs
+*.log

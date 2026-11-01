@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PaperDIY reader</title>
+<style>
+:root{--ink:#161616;--paper:#f6f4ef;--card:#fff;--line:#dcd7cc;--muted:#6d685f;--accent:#1f5f8b;--danger:#a3261e;--ok:#1d6b3a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+header{background:var(--ink);color:#fff;padding:16px 18px 0}
+header .top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;max-width:860px;margin:0 auto}
+header h1{margin:0;font-size:19px;letter-spacing:.01em;flex:1}
+.pill{font-size:12px;padding:3px 10px;border-radius:20px;background:#333;color:#ddd;white-space:nowrap}
+nav{display:flex;gap:4px;max-width:860px;margin:12px auto 0;overflow-x:auto}
+nav button{background:none;border:0;color:#bbb;padding:10px 14px;font:inherit;font-weight:600;border-bottom:3px solid transparent;cursor:pointer;border-radius:0}
+nav button.on{color:#fff;border-bottom-color:#fff}
+main{max-width:860px;margin:0 auto;padding:16px}
+section{display:none}section.on{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:14px}
+h2{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+p.note{margin:6px 0 0;color:var(--muted);font-size:13px}
+button,.btn{font:inherit;border:1px solid var(--ink);background:var(--ink);color:#fff;padding:8px 14px;border-radius:8px;cursor:pointer}
+button.ghost{background:#fff;color:var(--ink)}
+button.small{padding:4px 10px;font-size:13px}
+button.danger{background:#fff;color:var(--danger);border-color:var(--danger)}
+button:disabled{opacity:.45;cursor:default}
+input[type=text],input[type=password],select{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;background:#fff;color:var(--ink)}
+label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
+.drop{border:2px dashed var(--line);border-radius:10px;padding:26px 14px;text-align:center;color:var(--muted);cursor:pointer}
+.drop.hot{border-color:var(--accent);color:var(--accent);background:#f2f7fb}
+.drop b{color:var(--ink)}
+input[type=file]{display:none}
+.row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.row .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .n a{color:var(--ink);text-decoration:none;font-weight:600;cursor:pointer}
+.row .s{color:var(--muted);font-size:12px;white-space:nowrap}
+.row .ic{width:22px;text-align:center}
+.acts{display:flex;gap:6px}
+.crumbs{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:8px;font-size:14px}
+.crumbs a{color:var(--accent);cursor:pointer}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center}
+.bar{height:8px;background:#eee;border-radius:6px;overflow:hidden;margin-top:4px}
+.bar i{display:block;height:100%;background:var(--ink)}
+.uplist .row .bar{flex:1;max-width:180px}
+.msg{font-size:13px;margin-top:8px}.msg.ok{color:var(--ok)}.msg.err{color:var(--danger)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:12px}
+.grid figure{margin:0;background:#fff;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.grid img{display:block;width:100%;aspect-ratio:9/16;object-fit:cover;background:#eee}
+.grid figcaption{font-size:12px;padding:6px;display:flex;gap:4px;align-items:center}
+.grid figcaption span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.editor{display:grid;grid-template-columns:auto 1fr;gap:18px}
+@media(max-width:640px){.editor{grid-template-columns:1fr}}
+#pv{width:270px;height:480px;border:1px solid var(--ink);touch-action:none;cursor:grab;background:#fff;image-rendering:auto}
+.ctl{display:grid;grid-template-columns:110px 1fr 44px;gap:6px 10px;align-items:center;font-size:13px}
+.ctl input[type=range]{width:100%}
+.seg{display:flex;gap:0}.seg button{border-radius:0}.seg button:first-child{border-radius:8px 0 0 8px}.seg button:last-child{border-radius:0 8px 8px 0}
+.seg button:not(.on){background:#fff;color:var(--ink)}
+.net{display:flex;justify-content:space-between;padding:8px 10px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px;cursor:pointer}
+.net:hover{border-color:var(--ink)}
+footer{max-width:860px;margin:0 auto;padding:4px 16px 40px;display:flex;justify-content:space-between;align-items:center;gap:10px;color:var(--muted);font-size:12px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<header>
+  <div class="top"><h1>PaperDIY reader</h1><span class="pill" id="wifiPill">…</span><span class="pill" id="battPill"></span><span class="pill" id="sdPill"></span></div>
+  <nav>
+    <button data-tab="books" class="on">Books</button>
+    <button data-tab="files">Files</button>
+    <button data-tab="savers">Screensavers</button>
+    <button data-tab="wifi">Wi-Fi</button>
+  </nav>
+</header>
+<main>
+
+<section id="books" class="on">
+  <div class="card">
+    <h2>Add books</h2>
+    <div class="drop" id="bookDrop"><b>Drop .epub or .txt files here</b><br>or tap to choose. They go to <code>books/</code> on the SD card.</div>
+    <input type="file" id="bookPick" accept=".epub,.txt" multiple>
+    <div class="uplist" id="bookUps"></div>
+  </div>
+  <div class="card">
+    <h2>On the card</h2>
+    <div id="bookList"><p class="note">Loading…</p></div>
+    <p class="note">Books in sub-folders of <code>books/</code> (and EPUBs at the card's top level) show up in the library too. Use the Files tab to organise them.</p>
+  </div>
+</section>
+
+<section id="files">
+  <div class="card">
+    <div class="toolbar">
+      <select id="vol" style="width:auto"><option value="sd">SD card</option><option value="int">Internal</option></select>
+      <button class="ghost small" id="fUp">Up</button>
+      <button class="ghost small" id="fMkdir">New folder</button>
+      <button class="ghost small" id="fUpload">Upload here</button>
+      <input type="file" id="filePick" multiple>
+    </div>
+    <div class="crumbs" id="crumbs"></div>
+    <div class="uplist" id="fileUps"></div>
+    <div id="fileList"></div>
+  </div>
+</section>
+
+<section id="savers">
+  <div class="card">
+    <h2>New screensaver</h2>
+    <div class="drop" id="imgDrop"><b>Drop a photo here</b><br>or tap to choose. It is converted to the panel's 16 greys right here in your browser.</div>
+    <input type="file" id="imgPick" accept="image/*">
+    <div id="editor" class="editor" style="display:none;margin-top:14px">
+      <canvas id="pv" width="540" height="960"></canvas>
+      <div>
+        <div class="ctl">
+          <span>Framing</span><div class="seg"><button id="mFill" class="small on">Fill</button><button id="mFit" class="small">Fit</button></div><span></span>
+          <span>Zoom</span><input type="range" id="zoom" min="100" max="300" value="100"><span id="zoomV">1.0×</span>
+          <span>Brightness</span><input type="range" id="bri" min="-60" max="60" value="0"><span id="briV">0</span>
+          <span>Contrast</span><input type="range" id="con" min="-60" max="80" value="10"><span id="conV">10</span>
+          <span>Gamma</span><input type="range" id="gam" min="50" max="200" value="100"><span id="gamV">1.00</span>
+          <span>Dithering</span><label style="margin:0"><input type="checkbox" id="dith" checked> smooth gradients</label><span></span>
+          <span>Invert</span><label style="margin:0"><input type="checkbox" id="inv"> negative</label><span></span>
+        </div>
+        <p class="note">Drag the picture to reposition it. 540 × 960, exactly what the panel shows.</p>
+        <label>Name</label><input type="text" id="imgName" maxlength="60">
+        <div style="margin-top:12px;display:flex;gap:8px"><button id="imgSave">Save to reader</button><button class="ghost" id="imgCancel">Cancel</button></div>
+        <div class="msg" id="imgMsg"></div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>On the card <span style="text-transform:none;letter-spacing:0">(screensaver/)</span></h2>
+    <div class="grid" id="saverGrid"></div>
+    <p class="note">On the reader, set <b>Sleep screen</b> to <b>Card images</b> (or <b>Random</b>) in the menu to use these.</p>
+  </div>
+</section>
+
+<section id="wifi">
+  <div class="card">
+    <h2>Status</h2>
+    <div id="wifiStatus">…</div>
+  </div>
+  <div class="card">
+    <h2>Home network</h2>
+    <div id="nets"></div>
+    <label>Network name</label><input type="text" id="ssid" maxlength="32" autocomplete="off">
+    <label>Password</label><input type="password" id="pass" maxlength="64">
+    <label style="margin-top:6px"><input type="checkbox" id="showPass"> show password</label>
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button id="wifiSave">Save &amp; connect</button><button class="ghost" id="wifiForget">Forget saved network</button></div>
+    <div class="msg" id="wifiMsg"></div>
+    <p class="note">After saving, the reader switches to your home network: reconnect this phone or computer to that network and open <b>http://reader.local</b> (or the address shown on the reader). If the reader can't join, it reopens its own setup network so you can try again.</p>
+  </div>
+</section>
+
+</main>
+<footer><span id="ver"></span><button class="ghost" id="finish">Done — back to reading</button></footer>
+
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt=b=>b>=1073741824?(b/1073741824).toFixed(1)+" GB":b>=1048576?(b/1048576).toFixed(1)+" MB":Math.max(1,Math.round(b/1024))+" KB";
+const join=(a,b)=>a?a+"/"+b:b;
+let status={};
+
+async function api(method,url,body){
+  const o={method,headers:{"X-Reader":"1"}};
+  if(body!==undefined){o.headers["Content-Type"]="application/json";o.body=JSON.stringify(body);}
+  const r=await fetch(url,o);let j={};try{j=await r.json();}catch(e){}
+  if(!r.ok)throw new Error(j.error||("HTTP "+r.status));return j;
+}
+const list=(vol,path)=>api("GET","/api/fs/list?vol="+vol+"&path="+encodeURIComponent(path));
+const fileUrl=(vol,path,dl)=>"/api/fs/get?vol="+vol+"&path="+encodeURIComponent(path)+(dl?"&dl=1":"");
+async function ensureDir(vol,path){try{await api("POST","/api/fs/mkdir",{vol,path});}catch(e){}}
+
+/* upload with progress; resolves true when saved */
+function put(vol,path,blob,overwrite,onprog){
+  return new Promise((res,rej)=>{
+    const x=new XMLHttpRequest();
+    x.open("PUT","/api/fs/put?vol="+vol+"&path="+encodeURIComponent(path)+(overwrite?"&overwrite=1":""));
+    x.setRequestHeader("X-Reader","1");
+    x.upload.onprogress=e=>{if(e.lengthComputable&&onprog)onprog(e.loaded/e.total);};
+    x.onload=()=>{let j={};try{j=JSON.parse(x.responseText);}catch(e){}
+      if(x.status===200)res(true);else{const er=new Error(j.error||("HTTP "+x.status));er.status=x.status;rej(er);}};
+    x.onerror=()=>rej(new Error("connection lost"));
+    x.send(blob);
+  });
+}
+async function uploadMany(files,vol,dir,box,after){
+  for(const f of files){
+    const row=document.createElement("div");row.className="row";
+    row.innerHTML='<span class="n">'+esc(f.name)+'</span><div class="bar"><i style="width:0"></i></div><span class="s">'+fmt(f.size)+'</span>';
+    box.prepend(row);const bar=row.querySelector("i"),s=row.querySelector(".s");
+    const target=join(dir,f.name);
+    try{
+      try{await put(vol,target,f,false,p=>bar.style.width=(p*100)+"%");}
+      catch(e){if(e.status===409&&confirm(f.name+" already exists. Replace it?"))await put(vol,target,f,true,p=>bar.style.width=(p*100)+"%");else throw e;}
+      bar.style.width="100%";s.textContent="saved";s.style.color="var(--ok)";
+    }catch(e){s.textContent=e.message;s.style.color="var(--danger)";}
+  }
+  if(after)after();refreshStatus();
+}
+function dropzone(zone,input,cb){
+  zone.onclick=()=>input.click();
+  input.onchange=()=>{cb([...input.files]);input.value="";};
+  ["dragenter","dragover"].forEach(ev=>zone.addEventListener(ev,e=>{e.preventDefault();zone.classList.add("hot");}));
+  ["dragleave","drop"].forEach(ev=>zone.addEventListener(ev,e=>{e.preventDefault();zone.classList.remove("hot");}));
+  zone.addEventListener("drop",e=>cb([...e.dataTransfer.files]));
+}
+
+/* ---- tabs ---- */
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x===b));
+  document.querySelectorAll("section").forEach(s=>s.classList.toggle("on",s.id===b.dataset.tab));
+  ({books:loadBooks,files:loadFiles,savers:loadSavers,wifi:loadWifi})[b.dataset.tab]();
+});
+
+/* ---- status ---- */
+async function refreshStatus(){
+  try{status=await api("GET","/api/status");}catch(e){return;}
+  $("#ver").textContent="Firmware "+status.version;
+  $("#wifiPill").textContent=status.mode==="lan"?"Wi-Fi: "+status.saved_ssid:status.mode==="setup"?"Setup network":"Wi-Fi";
+  $("#battPill").textContent=status.battery>=0?"Battery "+status.battery+"%"+(status.battery<30?" — plug in":""):"";
+  $("#battPill").style.background=status.battery>=0&&status.battery<30?"#a3261e":"";
+  $("#sdPill").textContent=status.sd?"SD "+fmt(status.sd.free)+" free":"No SD card";
+  if(!status.sd){$("#vol").value="int";}
+}
+
+/* ---- books ---- */
+const bookVol=()=>status.sd?"sd":"int";
+const bookDir=()=>status.sd?"books":"";
+async function loadBooks(){
+  const box=$("#bookList");
+  try{
+    if(status.sd)await ensureDir("sd","books");
+    const r=await list(bookVol(),bookDir());
+    const items=r.entries.filter(e=>!e.dir&&/\.(epub|txt)$/i.test(e.name));
+    if(!items.length){box.innerHTML='<p class="note">No books yet.</p>';return;}
+    box.innerHTML="";
+    for(const e of items){
+      const p=join(bookDir(),e.name),row=document.createElement("div");row.className="row";
+      row.innerHTML='<span class="ic">📖</span><span class="n">'+esc(e.name)+'</span><span class="s">'+fmt(e.size)+'</span><span class="acts"><a class="btn ghost small" href="'+fileUrl(bookVol(),p,1)+'" style="background:#fff;color:var(--ink);text-decoration:none">Download</a><button class="danger small">Delete</button></span>';
+      row.querySelector(".danger").onclick=async()=>{if(!confirm("Delete "+e.name+"?"))return;try{await api("POST","/api/fs/delete",{vol:bookVol(),path:p});loadBooks();refreshStatus();}catch(er){alert(er.message);}};
+      box.appendChild(row);
+    }
+  }catch(e){box.innerHTML='<p class="msg err">'+esc(e.message)+'</p>';}
+}
+dropzone($("#bookDrop"),$("#bookPick"),async files=>{
+  files=files.filter(f=>/\.(epub|txt)$/i.test(f.name));
+  if(!files.length){alert("Only .epub and .txt files can be read.");return;}
+  if(status.sd)await ensureDir("sd","books");
+  uploadMany(files,bookVol(),bookDir(),$("#bookUps"),loadBooks);
+});
+
+/* ---- files ---- */
+let cwd="";
+function crumbs(){
+  const c=$("#crumbs");c.innerHTML="";
+  const parts=cwd?cwd.split("/"):[];
+  const add=(label,path)=>{const a=document.createElement("a");a.textContent=label;a.onclick=()=>{cwd=path;loadFiles();};c.appendChild(a);};
+  add($("#vol").value==="sd"?"SD card":"Internal","");
+  parts.forEach((p,i)=>{c.appendChild(document.createTextNode(" / "));add(p,parts.slice(0,i+1).join("/"));});
+}
+async function loadFiles(){
+  crumbs();const box=$("#fileList"),vol=$("#vol").value;
+  box.innerHTML='<p class="note">Loading…</p>';
+  try{
+    const r=await list(vol,cwd);box.innerHTML="";
+    if(!r.entries.length)box.innerHTML='<p class="note">Empty folder.</p>';
+    for(const e of r.entries){
+      const p=join(cwd,e.name),row=document.createElement("div");row.className="row";
+      row.innerHTML='<span class="ic">'+(e.dir?"📁":/\.(epub|txt)$/i.test(e.name)?"📖":/\.(png|jpe?g)$/i.test(e.name)?"🖼️":"📄")+'</span>'+
+        '<span class="n">'+(e.dir?'<a>'+esc(e.name)+'</a>':esc(e.name))+'</span><span class="s">'+(e.dir?"":fmt(e.size))+'</span>'+
+        '<span class="acts">'+(e.dir?"":'<a class="btn small" style="background:#fff;color:var(--ink);text-decoration:none" href="'+fileUrl(vol,p,1)+'">⇩</a>')+
+        '<button class="ghost small mv" title="Rename / move">✎</button><button class="danger small rm" title="Delete">✕</button></span>';
+      if(e.dir)row.querySelector(".n a").onclick=()=>{cwd=p;loadFiles();};
+      row.querySelector(".mv").onclick=async()=>{
+        const to=prompt("New name or path (relative to the card):",p);if(!to||to===p)return;
+        try{await api("POST","/api/fs/move",{vol,from:p,to:to.replace(/^\/+/,"")});loadFiles();}catch(er){alert(er.message);}
+      };
+      row.querySelector(".rm").onclick=async()=>{
+        if(!confirm("Delete "+e.name+(e.dir?" and everything in it":"")+"?"))return;
+        try{await api("POST","/api/fs/delete",{vol,path:p});loadFiles();refreshStatus();}catch(er){alert(er.message);}
+      };
+      box.appendChild(row);
+    }
+    if(r.truncated)box.insertAdjacentHTML("beforeend",'<p class="note">Showing the first 3000 entries.</p>');
+  }catch(e){box.innerHTML='<p class="msg err">'+esc(e.message)+'</p>';}
+}
+$("#vol").onchange=()=>{cwd="";loadFiles();};
+$("#fUp").onclick=()=>{cwd=cwd.includes("/")?cwd.slice(0,cwd.lastIndexOf("/")):"";loadFiles();};
+$("#fMkdir").onclick=async()=>{const n=prompt("Folder name:");if(!n)return;try{await api("POST","/api/fs/mkdir",{vol:$("#vol").value,path:join(cwd,n)});loadFiles();}catch(e){alert(e.message);}};
+$("#fUpload").onclick=()=>$("#filePick").click();
+$("#filePick").onchange=()=>{const f=[...$("#filePick").files];$("#filePick").value="";uploadMany(f,$("#vol").value,cwd,$("#fileUps"),loadFiles);};
+
+/* ---- screensavers ---- */
+const W=540,H=960;
+const S={img:null,fill:true,zoom:1,px:0,py:0,bri:0,con:10,gam:1,dith:true,inv:false};
+let levels=null;
+const pv=$("#pv"),pctx=pv.getContext("2d",{willReadFrequently:true});
+function renderImg(){
+  if(!S.img)return;
+  const iw=S.img.naturalWidth,ih=S.img.naturalHeight;
+  const base=S.fill?Math.max(W/iw,H/ih):Math.min(W/iw,H/ih);
+  const sc=base*S.zoom,dw=iw*sc,dh=ih*sc;
+  pctx.fillStyle="#fff";pctx.fillRect(0,0,W,H);
+  pctx.drawImage(S.img,(W-dw)/2+S.px,(H-dh)/2+S.py,dw,dh);
+  const id=pctx.getImageData(0,0,W,H),d=id.data;
+  const L=new Float32Array(W*H);
+  const c=(S.con+100)/100,b=S.bri*2.55,g=S.gam;
+  for(let i=0,p=0;i<L.length;i++,p+=4){
+    let v=0.299*d[p]+0.587*d[p+1]+0.114*d[p+2];
+    v=(v-128)*c+128+b; v=Math.min(255,Math.max(0,v));
+    v=255*Math.pow(v/255,1/g); if(S.inv)v=255-v; L[i]=v;
+  }
+  levels=new Uint8Array(W*H);
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+    const i=y*W+x,v=L[i];let q=Math.round(v/17);q=q<0?0:q>15?15:q;levels[i]=q;
+    if(S.dith){const e=v-q*17;
+      if(x+1<W)L[i+1]+=e*7/16;
+      if(y+1<H){if(x>0)L[i+W-1]+=e*3/16;L[i+W]+=e*5/16;if(x+1<W)L[i+W+1]+=e/16;}}
+  }
+  for(let i=0,p=0;i<levels.length;i++,p+=4){const v=levels[i]*17;d[p]=d[p+1]=d[p+2]=v;d[p+3]=255;}
+  pctx.putImageData(id,0,0);
+}
+let rq=0;const schedule=()=>{cancelAnimationFrame(rq);rq=requestAnimationFrame(renderImg);};
+function bindRange(id,key,show,scale){const el=$("#"+id);el.oninput=()=>{S[key]=el.value/(scale||1);$("#"+id+"V").textContent=show(S[key]);schedule();};}
+bindRange("zoom","zoom",v=>v.toFixed(1)+"×",100);
+bindRange("bri","bri",v=>v);bindRange("con","con",v=>v);bindRange("gam","gam",v=>v.toFixed(2),100);
+$("#dith").onchange=e=>{S.dith=e.target.checked;schedule();};
+$("#inv").onchange=e=>{S.inv=e.target.checked;schedule();};
+$("#mFill").onclick=()=>{S.fill=true;$("#mFill").classList.add("on");$("#mFit").classList.remove("on");schedule();};
+$("#mFit").onclick=()=>{S.fill=false;$("#mFit").classList.add("on");$("#mFill").classList.remove("on");schedule();};
+let drag=null;
+pv.addEventListener("pointerdown",e=>{drag={x:e.clientX,y:e.clientY,px:S.px,py:S.py};pv.setPointerCapture(e.pointerId);});
+pv.addEventListener("pointermove",e=>{if(!drag)return;const k=W/pv.clientWidth;S.px=drag.px+(e.clientX-drag.x)*k;S.py=drag.py+(e.clientY-drag.y)*k;schedule();});
+pv.addEventListener("pointerup",()=>drag=null);
+dropzone($("#imgDrop"),$("#imgPick"),files=>{
+  const f=files.find(f=>f.type.startsWith("image/"));if(!f)return;
+  const img=new Image();img.onload=()=>{S.img=img;S.px=S.py=0;S.zoom=1;$("#zoom").value=100;$("#zoomV").textContent="1.0×";
+    $("#imgName").value=f.name.replace(/\.[^.]+$/,"").replace(/[^\w\- ]+/g,"").trim().slice(0,40)||"screensaver";
+    $("#editor").style.display="";$("#imgMsg").textContent="";renderImg();};
+  img.src=URL.createObjectURL(f);
+});
+$("#imgCancel").onclick=()=>{$("#editor").style.display="none";S.img=null;};
+
+/* 4-bit greyscale PNG: 16 levels map 1:1 to the panel, ~10x smaller than RGBA */
+const crcT=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0;}return t;})();
+function crc32(bytes){let c=0xFFFFFFFF;for(let i=0;i<bytes.length;i++)c=crcT[(c^bytes[i])&255]^(c>>>8);return(c^0xFFFFFFFF)>>>0;}
+function chunk(type,data){const out=new Uint8Array(12+data.length),dv=new DataView(out.buffer);
+  dv.setUint32(0,data.length);for(let i=0;i<4;i++)out[4+i]=type.charCodeAt(i);out.set(data,8);
+  dv.setUint32(8+data.length,crc32(out.subarray(4,8+data.length)));return out;}
+async function png4(lv){
+  if(typeof CompressionStream==="undefined")return new Promise(r=>pv.toBlob(r,"image/png"));
+  const rl=W/2+1,raw=new Uint8Array(rl*H);
+  for(let y=0;y<H;y++){const o=y*rl;raw[o]=0;for(let x=0;x<W;x+=2)raw[o+1+x/2]=(lv[y*W+x]<<4)|lv[y*W+x+1];}
+  const z=new Uint8Array(await new Response(new Blob([raw]).stream().pipeThrough(new CompressionStream("deflate"))).arrayBuffer());
+  const ihdr=new Uint8Array(13),dv=new DataView(ihdr.buffer);dv.setUint32(0,W);dv.setUint32(4,H);ihdr[8]=4;ihdr[9]=0;
+  const sig=new Uint8Array([137,80,78,71,13,10,26,10]);
+  return new Blob([sig,chunk("IHDR",ihdr),chunk("IDAT",z),chunk("IEND",new Uint8Array(0))],{type:"image/png"});
+}
+$("#imgSave").onclick=async()=>{
+  if(!levels)return;const msg=$("#imgMsg");
+  if(!status.sd){msg.className="msg err";msg.textContent="Insert an SD card first.";return;}
+  const name=($("#imgName").value.replace(/[^\w\- ]+/g,"").trim()||"screensaver")+".png";
+  msg.className="msg";msg.textContent="Saving…";
+  try{
+    const blob=await png4(levels);await ensureDir("sd","screensaver");
+    try{await put("sd","screensaver/"+name,blob,false);}
+    catch(e){if(e.status===409&&confirm(name+" exists. Replace it?"))await put("sd","screensaver/"+name,blob,true);else throw e;}
+    msg.className="msg ok";msg.textContent="Saved "+name+" ("+fmt(blob.size)+").";loadSavers();refreshStatus();
+  }catch(e){msg.className="msg err";msg.textContent=e.message;}
+};
+async function loadSavers(){
+  const g=$("#saverGrid");
+  if(!status.sd){g.innerHTML='<p class="note">No SD card.</p>';return;}
+  try{
+    const r=await list("sd","screensaver");
+    const imgs=r.entries.filter(e=>!e.dir&&/\.(png|jpe?g)$/i.test(e.name));
+    g.innerHTML=imgs.length?"":'<p class="note">None yet.</p>';
+    for(const e of imgs){
+      const p="screensaver/"+e.name,f=document.createElement("figure");
+      f.innerHTML='<img loading="lazy" src="'+fileUrl("sd",p)+'"><figcaption><span>'+esc(e.name)+'</span><button class="danger small">✕</button></figcaption>';
+      f.querySelector("button").onclick=async()=>{if(!confirm("Delete "+e.name+"?"))return;try{await api("POST","/api/fs/delete",{vol:"sd",path:p});loadSavers();}catch(er){alert(er.message);}};
+      g.appendChild(f);
+    }
+  }catch(e){g.innerHTML='<p class="note">None yet.</p>';}
+}
+
+/* ---- wifi ---- */
+async function loadWifi(){
+  await refreshStatus();
+  const st=$("#wifiStatus");
+  if(status.mode==="lan")st.innerHTML='Connected to <b>'+esc(status.saved_ssid)+'</b> as <b>'+esc(status.ip)+'</b>. Also at <b>http://reader.local</b>.';
+  else if(status.mode==="setup")st.innerHTML='Running the setup network <b>'+esc(status.ap)+'</b>.'+(status.message?'<div class="msg err">'+esc(status.message)+'</div>':'')+(status.saved_ssid?'<p class="note">Saved network: '+esc(status.saved_ssid)+'</p>':'');
+  else st.textContent=status.mode;
+  if(!$("#ssid").value)$("#ssid").value=status.saved_ssid||"";
+  const nets=$("#nets");nets.innerHTML="";
+  try{
+    const r=await api("GET","/api/scan");
+    r.forEach(n=>{const d=document.createElement("div");d.className="net";
+      d.innerHTML='<span>'+esc(n.ssid)+'</span><span class="s">'+(n.secure?"🔒 ":"")+(n.rssi>-60?"▂▄▆█":n.rssi>-70?"▂▄▆":n.rssi>-80?"▂▄":"▂")+'</span>';
+      d.onclick=()=>{$("#ssid").value=n.ssid;$("#pass").focus();};nets.appendChild(d);});
+    if(r.length)nets.insertAdjacentHTML("beforeend",'<p class="note">Networks seen when the reader started. Tap one to fill it in.</p>');
+  }catch(e){}
+}
+$("#showPass").onchange=e=>$("#pass").type=e.target.checked?"text":"password";
+$("#wifiSave").onclick=async()=>{
+  const m=$("#wifiMsg");
+  try{await api("POST","/api/wifi",{ssid:$("#ssid").value,pass:$("#pass").value});
+    m.className="msg ok";m.textContent="Saved. The reader is joining "+$("#ssid").value+" now; its screen shows the result. Reconnect to that network and open http://reader.local.";}
+  catch(e){m.className="msg err";m.textContent=e.message;}
+};
+$("#wifiForget").onclick=async()=>{
+  if(!confirm("Forget the saved network? The reader goes back to its setup network."))return;
+  try{await api("POST","/api/wifi/forget");$("#wifiMsg").className="msg ok";$("#wifiMsg").textContent="Forgotten.";}catch(e){alert(e.message);}
+};
+$("#finish").onclick=async()=>{try{await api("POST","/api/finish");}catch(e){}document.body.innerHTML='<main><div class="card"><h2>All done</h2><p>The reader is refreshing its library. You can close this page.</p></div></main>';};
+
+refreshStatus().then(()=>{if(status.mode==="setup"&&!status.saved_ssid){document.querySelector('nav button[data-tab="wifi"]').click();}else loadBooks();});
+</script>
+</body>
+</html>
