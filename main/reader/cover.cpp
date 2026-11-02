@@ -32,7 +32,7 @@ struct Thumb {
     M5Canvas* sprite = nullptr;
 };
 std::list<Thumb> s_lru;
-constexpr size_t LRU_MAX = 40;
+constexpr size_t LRU_MAX = 64; /* ~2 MB of PSRAM: several library pages */
 
 M5Canvas* newSprite(int w, int h)
 {
@@ -248,17 +248,48 @@ void typeset(M5Canvas* cv, const BookEntry& b, int x, int y, int w, int h)
 
 /* ================================================================== */
 
-void ensureThumb(BookEntry& book)
+bool loadCached(BookEntry& book)
 {
     if (book.cover != 0) {
-        return;
+        return true;
     }
     if (lruGet(book.path)) {
         book.cover = 1;
-        return;
+        return true;
     }
     if (!book.is_epub) {
         book.cover = -1;
+        return true;
+    }
+    std::string file = library::cachePath(book, ".cov");
+    if (file.empty()) {
+        return false;
+    }
+    M5Canvas* sprite = newSprite(THUMB_W, THUMB_H);
+    if (!sprite) {
+        return false;
+    }
+    bool none = false;
+    hal_storage_lock();
+    bool ok = cacheRead(file, sprite, &none);
+    hal_storage_unlock();
+    if (ok) {
+        lruPut(book.path, sprite);
+        book.cover = 1;
+        return true;
+    }
+    sprite->deleteSprite();
+    delete sprite;
+    if (none) {
+        book.cover = -1;  // remembered: this book has no usable cover
+        return true;
+    }
+    return false;  // never decoded yet
+}
+
+void ensureThumb(BookEntry& book)
+{
+    if (loadCached(book)) {
         return;
     }
 
@@ -268,22 +299,7 @@ void ensureThumb(BookEntry& book)
         book.cover = -1;
         return;
     }
-
-    bool none = false;
-    hal_storage_lock();
-    bool ok = !file.empty() && cacheRead(file, sprite, &none);
-    hal_storage_unlock();
-    if (ok) {
-        lruPut(book.path, sprite);
-        book.cover = 1;
-        return;
-    }
-    if (none) {
-        sprite->deleteSprite();
-        delete sprite;
-        book.cover = -1;
-        return;
-    }
+    bool ok = false;
 
     uint32_t t0 = millis_();
     size_t n    = 0;

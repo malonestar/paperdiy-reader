@@ -548,11 +548,25 @@ void listSetSel(int sel)
 /* Drawing                                                             */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Resolves every already-cached cover on the visible grid page before it is
+ * drawn, so returning to the library paints all covers in one refresh. Only
+ * books never seen before are left for loadOneCover() to decode.
+ */
+void prepareCovers()
+{
+    const int first = gridFirst();
+    for (int i = 0; i < render::GRID_PER_PAGE && first + i < (int)g_books.size(); i++) {
+        cover::loadCached(g_books[(size_t)(first + i)]);
+    }
+}
+
 void draw()
 {
     const bool sd = hal_storage_sd_available();
     switch (g_state) {
         case State::Library:
+            prepareCovers();
             render::library(g_books, g_sel, gridFirst(), sd);
             break;
 
@@ -1130,6 +1144,21 @@ void dispatch(const Buttons& btn)
  * the current grid page per call, so covers fill in tile by tile.
  * @return true when a cover was produced (the grid needs a redraw).
  */
+/** True while a book on the visible grid page still has no cover state. */
+bool visibleCoversPending()
+{
+    if (g_state != State::Library) {
+        return false;
+    }
+    const int first = gridFirst();
+    for (int i = 0; i < render::GRID_PER_PAGE && first + i < (int)g_books.size(); i++) {
+        if (!cover::known(g_books[(size_t)(first + i)])) {
+            return true;
+        }
+    }
+    return false;
+}
+
 bool loadOneCover()
 {
     if (g_state != State::Library || g_books.empty()) {
@@ -1231,9 +1260,23 @@ void run()
         if (g_dirty) {
             g_dirty = false;
             draw();
-        } else if (millis_() - g_last_input > 150 && loadOneCover()) {
-            render::nextRefresh(render::Refresh::Quality);
-            g_dirty = true;
+        } else if (millis_() - g_last_input > 150) {
+            // First-time covers: decode one per pass, but batch the redraws
+            // (every 2.5 s, or once the page is complete) instead of one panel
+            // refresh per cover.
+            static bool s_cover_dirty  = false;
+            static uint32_t s_cover_ms = 0;
+            if (loadOneCover()) {
+                if (!s_cover_dirty) {
+                    s_cover_ms = millis_();
+                }
+                s_cover_dirty = true;
+            }
+            if (s_cover_dirty && (!visibleCoversPending() || millis_() - s_cover_ms > 2500)) {
+                s_cover_dirty = false;
+                render::nextRefresh(render::Refresh::Quality);
+                g_dirty = true;
+            }
         }
 
         // Idle power-off (never on USB power: it would also drop the USB link).

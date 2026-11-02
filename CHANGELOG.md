@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.1
+
+- Library: covers already cached are drawn in the same refresh as the grid, so
+  returning to the library shows every cover at once (no tile-by-tile reload).
+- First-time cover extraction updates the screen in batches instead of once per
+  cover; the in-memory cover cache holds ~6 library pages.
+
 ## 1.0.0 — first public release
 
 - **Library:** cover grid with reading progress, sorting, and a Studio shelf (Game of Life, design gallery).

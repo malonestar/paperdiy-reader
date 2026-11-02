@@ -30,6 +30,13 @@ static constexpr int THUMB_H = 212;
  */
 void ensureThumb(BookEntry& book);
 
+/**
+ * @brief Fast path: resolves the cover from memory or the on-card cache
+ *        (~20 ms) without ever decoding an EPUB.
+ * @return true when the cover state is now known.
+ */
+bool loadCached(BookEntry& book);
+
 /** @brief True once ensureThumb() has run for this book. */
 inline bool known(const BookEntry& book)
 {
